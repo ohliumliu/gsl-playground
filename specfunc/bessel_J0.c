@@ -107,5 +107,6 @@ int gsl_sf_bessel_J0_e(const double x, gsl_sf_result * result)
 
 double gsl_sf_bessel_J0(const double x)
 {
+  printf("hello");
   EVAL_RESULT(gsl_sf_bessel_J0_e(x, &result));
 }
