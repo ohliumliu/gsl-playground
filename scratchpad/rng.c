@@ -1,4 +1,5 @@
 # include <stdio.h>
+# include <math.h>
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_randist.h>
 
@@ -7,8 +8,7 @@ main (void)
 {
 const gsl_rng_type * T;
 gsl_rng * r;
-int i, n = 10;
-double mu = 3.0;
+int i, n = 5;
 double a = 1e-5;
 double b = 1e-5;
 /* create a generator chosen by the
@@ -21,9 +21,10 @@ the poisson distribution with mean
 parameter mu */
 for (i = 0; i < n; i++)
 {
-//unsigned int k = gsl_ran_poisson (r, mu);
-double beta = gsl_ran_beta(r, a, b);
-printf (" %4.2f", beta);
+//double beta = gsl_ran_beta(r, a, b);
+double gamma_a = gsl_ran_gamma(r, a, 1.0);
+double gamma_b = gsl_ran_gamma(r, b, 1.0);
+printf (" %4.2f\t%4.2f\n", gamma_a, gamma_b);
 }
 printf ("\n");
 gsl_rng_free (r);
