@@ -24,9 +24,11 @@ double beta;
 
 for (i = 0; i < n; i++)
 {
-//double beta = gsl_ran_beta(r, a, b);
-//double gamma_a = gsl_ran_gamma(r, a, 1.0);
-//double gamma_b = gsl_ran_gamma(r, b, 1.0);
+    /*
+    This is the classic Joehnk's method. It suffers from long execution time
+    when 1/a or 1/b is close to 1, but it works well when a or b is small (see
+    NAG library).
+    */
     U = gsl_rng_uniform_pos(r);
     V = gsl_rng_uniform_pos(r);
     X = pow(U, 1.0/a);
@@ -36,10 +38,12 @@ for (i = 0; i < n; i++)
     {
         if (X + Y > 0)
         {
+            // Joehnk's algorithm
             beta =  X/ (X + Y);
         }
         else
         {
+            //if X and Y happen to be numerically zero. Use the logrithm for stability
             double logX = log(U)/a;
             double logY = log(V)/b;
             double logM = logX > logY ? logX: logY;
