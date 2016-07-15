@@ -23,6 +23,7 @@
 #include <math.h>
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_randist.h>
+#include <gsl/gsl_cdf.h>
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_test.h>
 #include <gsl/gsl_ieee_utils.h>
@@ -37,6 +38,7 @@
 void testMoments (double (*f) (void), const char *name,
                   double a, double b, double p);
 void testPDF (double (*f) (void), double (*pdf) (double), const char *name);
+void testPDF_withCDF (double (*f) (void), double (*pdf) (double), const char *name);
 void testDiscretePDF (double (*f) (void), double (*pdf) (unsigned int),
                       const char *name);
 
@@ -264,6 +266,9 @@ main (void)
 #define FUNC2(x) test_ ## x, test_ ## x ## _pdf, "test gsl_ran_" #x
 #define FUNC3(x) "test gsl_ran_" #x
 
+  testPDF_withCDF (FUNC2 (beta));
+  //testPDF (FUNC2 (beta));
+  /*
   test_shuffle ();
   test_choose ();
 
@@ -288,8 +293,9 @@ main (void)
   test_dirichlet_moments ();
   test_multinomial_moments ();
 
+  testPDF_withCDF (FUNC2 (beta));
+  
   testPDF (FUNC2 (beta));
-  printf("%s\n", FUNC3(beta));
   testPDF (FUNC2 (cauchy));
   testPDF (FUNC2 (chisq));
   testPDF (FUNC2 (chisqnu2));
@@ -393,6 +399,7 @@ main (void)
   testDiscretePDF (FUNC2 (multinomial_large));
   testDiscretePDF (FUNC2 (negative_binomial));
   testDiscretePDF (FUNC2 (pascal));
+  */
 
   gsl_rng_free (r_global);
   gsl_ran_discrete_free (g1);
@@ -555,6 +562,124 @@ integrate (pdf_func * pdf, double a, double b)
   return result;
 }
 
+void
+testPDF_withCDF (double (*f) (void), double (*pdf) (double), const char *name)
+{
+  double aa = 1e-5;
+  double bb = 1e-5;
+  
+  double count[BINS], edge[BINS], p[BINS];
+  double a = 0.01, b = +1.0;
+  double dx = (b - a) / BINS;
+  double bin;
+  double total = 0, mean;
+  int i, j, status = 0, status_i = 0, attempts = 0;
+  long int n0 = 0, n = N;
+
+  for (i = 0; i < BINS; i++)
+    {
+      /* Compute the integral of p(x) from x to x+dx */
+
+      double x = a + i * dx;
+
+      if (fabs (x) < 1e-10)     /* hit the origin exactly */
+        x = 0.0;
+
+      //p[i]  = integrate (pdf, x, x+dx);
+      p[i] = gsl_cdf_beta_P(x+dx, aa, bb) - gsl_cdf_beta_P(x, aa, bb);
+    }
+
+
+  for (i = 0; i < BINS; i++)
+    {
+      count[i] = 0;
+      edge[i] = 0;
+    }
+
+ trial:
+  attempts++;
+  printf("attempts = %d\n", attempts);
+
+  for (i = n0; i < n; i++)
+    {
+      //double r = f ();
+      double r = gsl_ran_beta (r_global, aa, bb);
+      total += r;
+
+      if (r < b && r > a)
+        {
+          double u = (r - a) / dx;
+          double f = modf(u, &bin);
+          j = (int)bin;
+
+          if (f == 0)
+            edge[j]++;
+          else 
+            count[j]++;
+        }
+    }
+
+  /* Sort out where the hits on the edges should go */
+
+  for (i = 0; i < BINS; i++)
+    {
+      /* If the bin above is empty, its lower edge hits belong in the
+         lower bin */
+
+      if (i + 1 < BINS && count[i+1] == 0) {
+        count[i] += edge[i+1];
+        edge[i+1] = 0;
+      }
+
+      count[i] += edge[i];
+      edge[i] = 0;
+    }
+
+  mean = (total / n);
+
+  status = !gsl_finite(mean);
+  if (status) {
+    gsl_test (status, "%s, finite mean, observed %g", name, mean);
+    return;
+  }
+
+  for (i = 0; i < BINS; i++)
+    {
+      double x = a + i * dx;
+      double d = fabs (count[i] - n * p[i]);
+      if (!gsl_finite(p[i])) 
+        {
+          status_i = 1;
+        }
+      else if (p[i] != 0)
+        {
+          double s = d / sqrt (n * p[i]);
+          status_i = (s > 5) && (d > 2);
+        }
+      else
+        {
+          status_i = (count[i] != 0);
+        }
+      
+      /* Extend the sample if there is an outlier on the first attempt
+         to avoid spurious failures when running large numbers of tests. */
+      if (status_i && attempts < 50) 
+        { 
+          n0 = n; 
+          n = 2.0*n;
+          goto trial;
+        }
+
+      status |= status_i;
+      if (status_i)
+        gsl_test (status_i, "%s [%g,%g) (%g/%d=%g observed vs %g expected)",
+                  name, x, x + dx, count[i], n, count[i] / n, p[i]);
+    }
+
+  if (status == 0)
+    gsl_test (status, "%s, sampling against pdf over range [%g,%g) ",
+              name, a, b);
+}
 
 void
 testPDF (double (*f) (void), double (*pdf) (double), const char *name)
