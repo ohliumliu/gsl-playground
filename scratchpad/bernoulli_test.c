@@ -10,8 +10,8 @@ main (void)
 const gsl_rng_type * T;
 gsl_rng * r;
 int i, n = 500000; // number of random numbers generated
-double a = 1e-3; // shape factor, a
-double b = 1e-3; // shape factor, b
+double a = 1e-1; // shape factor, a
+double b = 1e-1; // shape factor, b
 /* create a generator chosen by the
 environment variable GSL_RNG_TYPE */
 gsl_rng_env_setup();
@@ -49,13 +49,14 @@ printf("high-value cluster: [%.18e, %.18e]\n", min_1, max_1);
 printf("low-value cluster: [%.18e, %.18e]\n", min_0, max_0);
 printf ("\n");
 gsl_rng_free (r);
-
+/*
 int bins = 10;
 double step = 1./bins;
-for (i = 0; i<bins; i++)
+for (i = 0; i<bins+1; i++)
 {
-    printf("cdf_p: %.18e\n", gsl_cdf_beta_P(i*step, a, b));
+ //   printf("cdf_p: %.18e\n", gsl_cdf_beta_P(i*step, a, b));
     printf("cdf_q: %.18e\n", gsl_cdf_beta_Q(i*step, a, b));
 }
+*/
 return 0;
 }
