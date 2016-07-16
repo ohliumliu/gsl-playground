@@ -442,7 +442,7 @@ void
 testPDF_c (double (*f) (void), double (*pdf) (double), const char *name, const int cdf)
 {
   double count[BINS], edge[BINS], p[BINS];
-  double a = -5.005, b = +5.0; //make a slightly asymmetric to avoid edge hitting 0 or 1?
+  double a = -5.0001, b = +5.0; //make a slightly asymmetric to avoid edge hitting 0 or 1?
   double dx = (b - a) / BINS;
   double bin;
   double total = 0, mean;
@@ -526,7 +526,7 @@ testPDF_c (double (*f) (void), double (*pdf) (double), const char *name, const i
       else if (p[i] != 0)
         {
           double s = d / sqrt (n * p[i]);
-          //printf("bin: [%4.5f, %4.5f], count = %4.2f, expected = %4.2f\n ", x, x+dx, count[i], n*p[i]);
+          printf("bin: [%4.5f, %4.5f], count = %4.2f, expected = %4.2f\n ", x, x+dx, count[i], n*p[i]);
           status_i = (s > 5) && (d > 2);
         }
       else
@@ -639,7 +639,7 @@ testPDF (double (*f) (void), double (*pdf) (double), const char *name)
       else if (p[i] != 0)
         {
           double s = d / sqrt (n * p[i]);
-          //printf("bin: [%4.5f, %4.5f], count = %4.2f, expected = %4.2f\n ", x, x+dx, count[i], n*p[i]);
+          printf("bin: [%4.5f, %4.5f], count = %4.2f, expected = %4.2f\n ", x, x+dx, count[i], n*p[i]);
           status_i = (s > 5) && (d > 2);
         }
       else
