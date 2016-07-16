@@ -1,17 +1,17 @@
 /* randist/test.c
- * 
+ *
  * Copyright (C) 1996, 1997, 1998, 1999, 2000, 2007, 2010 James Theiler, Brian Gough
- * 
+ *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
  * the Free Software Foundation; either version 3 of the License, or (at
  * your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful, but
  * WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
  * General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
@@ -34,10 +34,10 @@
 /* Convient test dimension for multivariant distributions */
 #define MULTI_DIM 10
 
-
 void testMoments (double (*f) (void), const char *name,
                   double a, double b, double p);
 void testPDF (double (*f) (void), double (*pdf) (double), const char *name);
+void testPDF_c (double (*f) (void), double (*pdf) (double), const char *name, const int cdf);
 void testPDF_withCDF (double (*f) (void), double (*pdf) (double), const char *name);
 void testDiscretePDF (double (*f) (void), double (*pdf) (unsigned int),
                       const char *name);
@@ -65,8 +65,6 @@ double test_binomial0 (void);
 double test_binomial0_pdf (unsigned int n);
 double test_binomial1 (void);
 double test_binomial1_pdf (unsigned int n);
-
-
 
 double test_binomial_knuth (void);
 double test_binomial_knuth_pdf (unsigned int n);
@@ -271,7 +269,10 @@ main (void)
 #define FUNC3(x) "test gsl_ran_" #x
 #define FUNC4(x) test_ ## x, test_ ## x ## _cdf, "test gsl_ran_" #x
 
-  testPDF_withCDF (FUNC4 (beta_small));
+  //testPDF_c(FUNC4(beta_small), 1);
+  testPDF_c(FUNC4(beta), 1);
+  //testPDF_c(FUNC2(beta), 0);
+  //testPDF_withCDF (FUNC4 (beta_small));
   //testPDF (FUNC2 (beta));
   /*
   test_shuffle ();
@@ -290,7 +291,7 @@ main (void)
 
   testMoments (FUNC (discrete2), -0.5,  0.5, 1.0/45.0 );
   testMoments (FUNC (discrete2),  8.5,  9.5, 0 );
-  
+
   testMoments (FUNC (discrete3), -0.5, 0.5, 0.05 );
   testMoments (FUNC (discrete3),  0.5, 1.5, 0.05 );
   testMoments (FUNC (discrete3), -0.5, 9.5, 0.5 );
@@ -299,7 +300,7 @@ main (void)
   test_multinomial_moments ();
 
   testPDF_withCDF (FUNC2 (beta));
-  
+
   testPDF (FUNC2 (beta));
   testPDF (FUNC2 (cauchy));
   testPDF (FUNC2 (chisq));
@@ -503,9 +504,6 @@ test_choose (void)
 
 }
 
-
-
-
 void
 testMoments (double (*f) (void), const char *name,
              double a, double b, double p)
@@ -538,12 +536,12 @@ typedef double pdf_func(double);
 static int pdf_errors = 0;
 static double pdf_errval = 0.0;
 
-double 
+double
 wrapper_function (double x, void *params)
 {
   pdf_func * pdf = (pdf_func *)params;
   double P = pdf(x);
-  if (!gsl_finite(P)) {  
+  if (!gsl_finite(P)) {
     pdf_errors++;
     pdf_errval = P;
     P = 0; /* skip invalid value now, but return pdf_errval at the end */
@@ -556,7 +554,7 @@ integrate (pdf_func * pdf, double a, double b)
 {
   double result, abserr;
   size_t n = 1000;
-  gsl_function f;  
+  gsl_function f;
   gsl_integration_workspace * w = gsl_integration_workspace_alloc (n);
   f.function = &wrapper_function;
   f.params = (void *)pdf;
@@ -586,10 +584,9 @@ testPDF_withCDF (double (*f) (void), double (*cdf) (double), const char *name)
 
       if (fabs (x) < 1e-10)     /* hit the origin exactly */
         x = 0.0;
-        
+
       p[i] = cdf(x+dx) - cdf(x);
     }
-
 
   for (i = 0; i < BINS; i++)
     {
@@ -614,7 +611,7 @@ testPDF_withCDF (double (*f) (void), double (*cdf) (double), const char *name)
 
           if (f == 0)
             edge[j]++;
-          else 
+          else
             count[j]++;
         }
     }
@@ -647,7 +644,7 @@ testPDF_withCDF (double (*f) (void), double (*cdf) (double), const char *name)
     {
       double x = a + i * dx;
       double d = fabs (count[i] - n * p[i]);
-      if (!gsl_finite(p[i])) 
+      if (!gsl_finite(p[i]))
         {
           status_i = 1;
         }
@@ -661,12 +658,128 @@ testPDF_withCDF (double (*f) (void), double (*cdf) (double), const char *name)
         {
           status_i = (count[i] != 0);
         }
-      
+
       /* Extend the sample if there is an outlier on the first attempt
          to avoid spurious failures when running large numbers of tests. */
-      if (status_i && attempts < 50) 
-        { 
-          n0 = n; 
+      if (status_i && attempts < 50)
+        {
+          n0 = n;
+          n = 2.0*n;
+          goto trial;
+        }
+
+      status |= status_i;
+      if (status_i)
+        gsl_test (status_i, "%s [%g,%g) (%g/%d=%g observed vs %g expected)",
+                  name, x, x + dx, count[i], n, count[i] / n, p[i]);
+    }
+
+  if (status == 0)
+    gsl_test (status, "%s, sampling against pdf over range [%g,%g) ",
+              name, a, b);
+}
+
+void
+testPDF_c (double (*f) (void), double (*pdf) (double), const char *name, const int cdf)
+{
+  double count[BINS], edge[BINS], p[BINS];
+  double a = -5.005, b = +5.0;
+  double dx = (b - a) / BINS;
+  double bin;
+  double total = 0, mean;
+  int i, j, status = 0, status_i = 0, attempts = 0;
+  long int n0 = 0, n = N;
+
+  for (i = 0; i < BINS; i++)
+    {
+      /* Compute the integral of p(x) from x to x+dx by integration or cdf */
+
+      double x = a + i * dx;
+
+      if (fabs (x) < 1e-10)     /* hit the origin exactly */
+        x = 0.0;
+
+      if (cdf)
+        p[i] = pdf(x+dx) - pdf(x); // use cdf if cdf = 1
+      else  // use integration
+        p[i]  = integrate (pdf, x, x+dx);
+    }
+
+  for (i = 0; i < BINS; i++)
+    {
+      count[i] = 0;
+      edge[i] = 0;
+    }
+
+ trial:
+  attempts++;
+
+  for (i = n0; i < n; i++)
+    {
+      double r = f ();
+      total += r;
+
+      if (r < b && r > a)
+        {
+          double u = (r - a) / dx;
+          double f = modf(u, &bin);
+          j = (int)bin;
+
+          if (f == 0)
+            edge[j]++;
+          else
+            count[j]++;
+        }
+    }
+
+  /* Sort out where the hits on the edges should go */
+
+  for (i = 0; i < BINS; i++)
+    {
+      /* If the bin above is empty, its lower edge hits belong in the
+         lower bin */
+
+      if (i + 1 < BINS && count[i+1] == 0) {
+        count[i] += edge[i+1];
+        edge[i+1] = 0;
+      }
+
+      count[i] += edge[i];
+      edge[i] = 0;
+    }
+
+  mean = (total / n);
+
+  status = !gsl_finite(mean);
+  if (status) {
+    gsl_test (status, "%s, finite mean, observed %g", name, mean);
+    return;
+  }
+
+  for (i = 0; i < BINS; i++)
+    {
+      double x = a + i * dx;
+      double d = fabs (count[i] - n * p[i]);
+      if (!gsl_finite(p[i]))
+        {
+          status_i = 1;
+        }
+      else if (p[i] != 0)
+        {
+          double s = d / sqrt (n * p[i]);
+          printf("bin: [%4.5f, %4.5f], count = %4.2f, expected = %4.2f\n ", x, x+dx, count[i], n*p[i]);
+          status_i = (s > 5) && (d > 2);
+        }
+      else
+        {
+          status_i = (count[i] != 0);
+        }
+
+      /* Extend the sample if there is an outlier on the first attempt
+         to avoid spurious failures when running large numbers of tests. */
+      if (status_i && attempts < 50)
+        {
+          n0 = n;
           n = 2.0*n;
           goto trial;
         }
@@ -705,7 +818,6 @@ testPDF (double (*f) (void), double (*pdf) (double), const char *name)
       p[i]  = integrate (pdf, x, x+dx);
     }
 
-
   for (i = 0; i < BINS; i++)
     {
       count[i] = 0;
@@ -728,7 +840,7 @@ testPDF (double (*f) (void), double (*pdf) (double), const char *name)
 
           if (f == 0)
             edge[j]++;
-          else 
+          else
             count[j]++;
         }
     }
@@ -761,7 +873,7 @@ testPDF (double (*f) (void), double (*pdf) (double), const char *name)
     {
       double x = a + i * dx;
       double d = fabs (count[i] - n * p[i]);
-      if (!gsl_finite(p[i])) 
+      if (!gsl_finite(p[i]))
         {
           status_i = 1;
         }
@@ -774,12 +886,12 @@ testPDF (double (*f) (void), double (*pdf) (double), const char *name)
         {
           status_i = (count[i] != 0);
         }
-      
+
       /* Extend the sample if there is an outlier on the first attempt
          to avoid spurious failures when running large numbers of tests. */
-      if (status_i && attempts < 50) 
-        { 
-          n0 = n; 
+      if (status_i && attempts < 50)
+        {
+          n0 = n;
           n = 2.0*n;
           goto trial;
         }
@@ -838,8 +950,6 @@ testDiscretePDF (double (*f) (void), double (*pdf) (unsigned int),
     gsl_test (status, "%s, sampling against pdf over range [%d,%d) ",
               name, 0, BINS);
 }
-
-
 
 double
 test_beta (void)
@@ -937,7 +1047,6 @@ test_binomial_knuth_pdf (unsigned int n)
   return gsl_ran_binomial_pdf (n, 0.3, 5);
 }
 
-
 double
 test_binomial_large (void)
 {
@@ -961,7 +1070,6 @@ test_binomial_large_knuth_pdf (unsigned int n)
 {
   return gsl_ran_binomial_pdf (n, 0.3, 55);
 }
-
 
 double
 test_binomial_huge (void)
@@ -1034,7 +1142,6 @@ test_chisqnu2_pdf (double x)
 {
   return gsl_ran_chisq_pdf (x, 2.0);
 }
-
 
 double
 test_dir2d (void)
@@ -1176,7 +1283,6 @@ test_dirichlet_pdf (double x)
   return gsl_ran_dirichlet_pdf (K, alpha, theta);
 }
 
-
 double
 test_dirichlet_small (void)
 {
@@ -1204,7 +1310,6 @@ test_dirichlet_small_pdf (double x)
 
   return gsl_ran_dirichlet_pdf (K, alpha, theta);
 }
-
 
 /* Check that the observed means of the Dirichlet variables are
    within reasonable statistical errors of their correct values. */
@@ -1253,7 +1358,6 @@ test_dirichlet_moments (void)
     }
 }
 
-
 /* Check that the observed means of the multinomial variables are
    within reasonable statistical errors of their correct values. */
 
@@ -1296,7 +1400,6 @@ test_multinomial_moments (void)
                 obs_mean, mean);
     }
 }
-
 
 double
 test_discrete1 (void)
@@ -1348,7 +1451,6 @@ test_discrete3_pdf (unsigned int n)
 {
   return gsl_ran_discrete_pdf ((size_t) n, g3);
 }
-
 
 double
 test_erlang (void)
@@ -1421,7 +1523,6 @@ test_exppow2_pdf (double x)
 {
   return gsl_ran_exppow_pdf (x, 3.7, 2.0);
 }
-
 
 double
 test_exppow2a (void)
@@ -1509,7 +1610,6 @@ test_gamma1_pdf (double x)
   return gsl_ran_gamma_pdf (x, 1.0, 2.17);
 }
 
-
 double
 test_gamma_int (void)
 {
@@ -1521,7 +1621,6 @@ test_gamma_int_pdf (double x)
 {
   return gsl_ran_gamma_pdf (x, 10.0, 2.17);
 }
-
 
 double
 test_gamma_large (void)
@@ -1590,7 +1689,6 @@ test_gamma_mt1_pdf (double x)
   return gsl_ran_gamma_pdf (x, 1.0, 2.17);
 }
 
-
 double
 test_gamma_mt_int (void)
 {
@@ -1602,7 +1700,6 @@ test_gamma_mt_int_pdf (double x)
 {
   return gsl_ran_gamma_pdf (x, 10.0, 2.17);
 }
-
 
 double
 test_gamma_mt_large (void)
@@ -1616,7 +1713,6 @@ test_gamma_mt_large_pdf (double x)
   return gsl_ran_gamma_pdf (x, 20.0, 2.17);
 }
 
-
 double
 test_gamma_mt_small (void)
 {
@@ -1628,7 +1724,6 @@ test_gamma_mt_small_pdf (double x)
 {
   return gsl_ran_gamma_pdf (x, 0.92, 2.17);
 }
-
 
 double
 test_gamma_knuth_vlarge (void)
@@ -1721,7 +1816,6 @@ test_gaussian_tail2_pdf (double x)
   return gsl_ran_gaussian_tail_pdf (x, 0.1, 2.0);
 }
 
-
 double
 test_ugaussian (void)
 {
@@ -1794,7 +1888,6 @@ test_bivariate_gaussian2_pdf (double y)
   return sum;
 }
 
-
 double
 test_bivariate_gaussian3 (void)
 {
@@ -1833,7 +1926,6 @@ test_bivariate_gaussian4_pdf (double x)
   return gsl_ran_gaussian_pdf (x, sigma);
 }
 
-
 double
 test_geometric (void)
 {
@@ -1869,7 +1961,6 @@ test_hypergeometric1_pdf (unsigned int n)
 {
   return gsl_ran_hypergeometric_pdf (n, 5, 7, 4);
 }
-
 
 double
 test_hypergeometric2 (void)
@@ -1919,7 +2010,6 @@ test_hypergeometric5_pdf (unsigned int n)
   return gsl_ran_hypergeometric_pdf (n, 2, 7, 5);
 }
 
-
 double
 test_hypergeometric6 (void)
 {
@@ -1931,9 +2021,6 @@ test_hypergeometric6_pdf (unsigned int n)
 {
   return gsl_ran_hypergeometric_pdf (n, 2, 10, 3);
 }
-
-
-
 
 double
 test_gumbel1 (void)
@@ -2019,7 +2106,6 @@ test_levy2a_pdf (double x)
   return gsl_ran_gaussian_pdf (x, sqrt (2.0) * 5.0);
 }
 
-
 double
 test_levy_skew1 (void)
 {
@@ -2092,7 +2178,6 @@ test_levy_skew2b_pdf (double x)
   return gsl_ran_gaussian_pdf (x, sqrt (2.0) * 5.0);
 }
 
-
 double
 test_logistic (void)
 {
@@ -2116,7 +2201,6 @@ test_logarithmic_pdf (unsigned int n)
 {
   return gsl_ran_logarithmic_pdf (n, 0.4);
 }
-
 
 double
 test_lognormal (void)
@@ -2159,7 +2243,6 @@ test_multinomial_pdf (unsigned int n_0)
 
   return gsl_ran_multinomial_pdf (K, p, n);
 }
-
 
 double
 test_multinomial_large (void)
@@ -2204,7 +2287,6 @@ test_pascal_pdf (unsigned int n)
   return gsl_ran_pascal_pdf (n, 0.8, 3);
 }
 
-
 double
 test_pareto (void)
 {
@@ -2241,7 +2323,6 @@ test_rayleigh_tail_pdf (double x)
   return gsl_ran_rayleigh_tail_pdf (x, 2.7, 1.9);
 }
 
-
 double
 test_poisson (void)
 {
@@ -2265,7 +2346,6 @@ test_poisson_large_pdf (unsigned int n)
 {
   return gsl_ran_poisson_pdf (n, 30.0);
 }
-
 
 double
 test_tdist1 (void)
@@ -2291,7 +2371,6 @@ test_tdist2_pdf (double x)
   return gsl_ran_tdist_pdf (x, 12.75);
 }
 
-
 double
 test_laplace (void)
 {
@@ -2315,7 +2394,6 @@ test_weibull_pdf (double x)
 {
   return gsl_ran_weibull_pdf (x, 3.14, 2.75);
 }
-
 
 double
 test_weibull1 (void)
