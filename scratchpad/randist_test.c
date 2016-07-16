@@ -45,7 +45,11 @@ void testDiscretePDF (double (*f) (void), double (*pdf) (unsigned int),
 void test_shuffle (void);
 void test_choose (void);
 double test_beta (void);
+double test_beta_small (void);
 double test_beta_pdf (double x);
+double test_beta_small_pdf (double x);
+double test_beta_cdf (double x);
+double test_beta_small_cdf (double x);
 double test_bernoulli (void);
 double test_bernoulli_pdf (unsigned int n);
 
@@ -265,8 +269,9 @@ main (void)
 #define FUNC(x)  test_ ## x,                     "test gsl_ran_" #x
 #define FUNC2(x) test_ ## x, test_ ## x ## _pdf, "test gsl_ran_" #x
 #define FUNC3(x) "test gsl_ran_" #x
+#define FUNC4(x) test_ ## x, test_ ## x ## _cdf, "test gsl_ran_" #x
 
-  testPDF_withCDF (FUNC2 (beta));
+  testPDF_withCDF (FUNC4 (beta_small));
   //testPDF (FUNC2 (beta));
   /*
   test_shuffle ();
@@ -563,11 +568,8 @@ integrate (pdf_func * pdf, double a, double b)
 }
 
 void
-testPDF_withCDF (double (*f) (void), double (*pdf) (double), const char *name)
+testPDF_withCDF (double (*f) (void), double (*cdf) (double), const char *name)
 {
-  double aa = 1e-5;
-  double bb = 1e-5;
-  
   double count[BINS], edge[BINS], p[BINS];
   double a = -5.1, b = 5+1e-5;
   double dx = (b - a) / BINS;
@@ -584,9 +586,8 @@ testPDF_withCDF (double (*f) (void), double (*pdf) (double), const char *name)
 
       if (fabs (x) < 1e-10)     /* hit the origin exactly */
         x = 0.0;
-
-      //p[i]  = integrate (pdf, x, x+dx);
-      p[i] = gsl_cdf_beta_P(x+dx, aa, bb) - gsl_cdf_beta_P(x, aa, bb);
+        
+      p[i] = cdf(x+dx) - cdf(x);
     }
 
 
@@ -602,8 +603,7 @@ testPDF_withCDF (double (*f) (void), double (*pdf) (double), const char *name)
 
   for (i = n0; i < n; i++)
     {
-      //double r = f ();
-      double r = gsl_ran_beta (r_global, aa, bb);
+      double r = f ();
       total += r;
 
       if (r < b && r > a)
@@ -844,15 +844,37 @@ testDiscretePDF (double (*f) (void), double (*pdf) (unsigned int),
 double
 test_beta (void)
 {
-  //return gsl_ran_beta (r_global, 2.0, 3.0);
-  return gsl_ran_beta (r_global, 1.1, 1.1);
+  return gsl_ran_beta (r_global, 2.0, 3.0);
+}
+
+double
+test_beta_small (void)
+{
+  return gsl_ran_beta (r_global, 1e-5, 1e-5);
 }
 
 double
 test_beta_pdf (double x)
 {
-  //return gsl_ran_beta_pdf (x, 2.0, 3.0);
-  return gsl_ran_beta (r_global, 1.1, 1.1);
+  return gsl_ran_beta_pdf (x, 2.0, 3.0);
+}
+
+double
+test_beta_small_pdf (double x)
+{
+  return gsl_ran_beta_pdf (x, 1e-5, 1e-5);
+}
+
+double
+test_beta_cdf (double x)
+{
+  return gsl_cdf_beta_P(x, 2.0, 3.0);
+}
+
+double
+test_beta_small_cdf (double x)
+{
+  return gsl_cdf_beta_P(x, 1e-5, 1e-5);
 }
 
 double
