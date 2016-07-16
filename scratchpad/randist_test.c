@@ -569,7 +569,7 @@ testPDF_withCDF (double (*f) (void), double (*pdf) (double), const char *name)
   double bb = 1e-5;
   
   double count[BINS], edge[BINS], p[BINS];
-  double a = 0.01, b = +1.0;
+  double a = -5.1, b = 5+1e-5;
   double dx = (b - a) / BINS;
   double bin;
   double total = 0, mean;
@@ -654,6 +654,7 @@ testPDF_withCDF (double (*f) (void), double (*pdf) (double), const char *name)
       else if (p[i] != 0)
         {
           double s = d / sqrt (n * p[i]);
+          printf("bin: [%4.2f, %4.2f], count = %4.2f, expected = %4.2f\n ", x, x+dx, count[i], n*p[i]);
           status_i = (s > 5) && (d > 2);
         }
       else
