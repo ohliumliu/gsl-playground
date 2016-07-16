@@ -23,6 +23,7 @@
 #include <math.h>
 #include <gsl/gsl_math.h>
 #include <gsl/gsl_randist.h>
+#include <gsl/gsl_cdf.h>
 #include <gsl/gsl_rng.h>
 #include <gsl/gsl_test.h>
 #include <gsl/gsl_ieee_utils.h>
@@ -37,13 +38,18 @@
 void testMoments (double (*f) (void), const char *name,
                   double a, double b, double p);
 void testPDF (double (*f) (void), double (*pdf) (double), const char *name);
+void testPDF_c (double (*f) (void), double (*pdf) (double), const char *name, const int cdf);
 void testDiscretePDF (double (*f) (void), double (*pdf) (unsigned int),
                       const char *name);
 
 void test_shuffle (void);
 void test_choose (void);
 double test_beta (void);
+double test_beta_small (void);
 double test_beta_pdf (double x);
+double test_beta_small_pdf (double x);
+double test_beta_cdf (double x);
+double test_beta_small_cdf (double x);
 double test_bernoulli (void);
 double test_bernoulli_pdf (unsigned int n);
 
@@ -262,6 +268,8 @@ main (void)
 
 #define FUNC(x)  test_ ## x,                     "test gsl_ran_" #x
 #define FUNC2(x) test_ ## x, test_ ## x ## _pdf, "test gsl_ran_" #x
+#define FUNC3(x) "test gsl_ran_" #x
+#define FUNC4(x) test_ ## x, test_ ## x ## _cdf, "test gsl_ran_" #x
 
   test_shuffle ();
   test_choose ();
@@ -287,7 +295,11 @@ main (void)
   test_dirichlet_moments ();
   test_multinomial_moments ();
 
-  testPDF (FUNC2 (beta));
+  testPDF (FUNC2 (beta)); // existing test for beta distribution
+  testPDF_c(FUNC4(beta_small), 1); // use cdf in testPDF_c. Test with small shape factor
+  testPDF_c(FUNC4(beta), 1); // use cdf in testPDF_c. Test with large shape factor
+  testPDF_c(FUNC2(beta), 0); // use integraation in testPDF_c.
+  
   testPDF (FUNC2 (cauchy));
   testPDF (FUNC2 (chisq));
   testPDF (FUNC2 (chisqnu2));
@@ -553,6 +565,240 @@ integrate (pdf_func * pdf, double a, double b)
   return result;
 }
 
+/* this is essentially the same as testPDF, but uses cdf to calculate expected
+   counts. If testPDF_c is used, this is redundant.
+*/
+void
+testPDF_withCDF (double (*f) (void), double (*cdf) (double), const char *name)
+{
+  double count[BINS], edge[BINS], p[BINS];
+  double a = -5.1, b = 5+1e-5;
+  double dx = (b - a) / BINS;
+  double bin;
+  double total = 0, mean;
+  int i, j, status = 0, status_i = 0, attempts = 0;
+  long int n0 = 0, n = N;
+
+  for (i = 0; i < BINS; i++)
+    {
+      /* Compute the integral of p(x) from x to x+dx */
+
+      double x = a + i * dx;
+
+      if (fabs (x) < 1e-10)     /* hit the origin exactly */
+        x = 0.0;
+
+      p[i] = cdf(x+dx) - cdf(x);
+    }
+
+  for (i = 0; i < BINS; i++)
+    {
+      count[i] = 0;
+      edge[i] = 0;
+    }
+
+ trial:
+  attempts++;
+  printf("attempts = %d\n", attempts);
+
+  for (i = n0; i < n; i++)
+    {
+      double r = f ();
+      total += r;
+
+      if (r < b && r > a)
+        {
+          double u = (r - a) / dx;
+          double f = modf(u, &bin);
+          j = (int)bin;
+
+          if (f == 0)
+            edge[j]++;
+          else
+            count[j]++;
+        }
+    }
+
+  /* Sort out where the hits on the edges should go */
+
+  for (i = 0; i < BINS; i++)
+    {
+      /* If the bin above is empty, its lower edge hits belong in the
+         lower bin */
+
+      if (i + 1 < BINS && count[i+1] == 0) {
+        count[i] += edge[i+1];
+        edge[i+1] = 0;
+      }
+
+      count[i] += edge[i];
+      edge[i] = 0;
+    }
+
+  mean = (total / n);
+
+  status = !gsl_finite(mean);
+  if (status) {
+    gsl_test (status, "%s, finite mean, observed %g", name, mean);
+    return;
+  }
+
+  for (i = 0; i < BINS; i++)
+    {
+      double x = a + i * dx;
+      double d = fabs (count[i] - n * p[i]);
+      if (!gsl_finite(p[i]))
+        {
+          status_i = 1;
+        }
+      else if (p[i] != 0)
+        {
+          double s = d / sqrt (n * p[i]);
+          status_i = (s > 5) && (d > 2);
+        }
+      else
+        {
+          status_i = (count[i] != 0);
+        }
+
+      /* Extend the sample if there is an outlier on the first attempt
+         to avoid spurious failures when running large numbers of tests. */
+      if (status_i && attempts < 50)
+        {
+          n0 = n;
+          n = 2.0*n;
+          goto trial;
+        }
+
+      status |= status_i;
+      if (status_i)
+        gsl_test (status_i, "%s [%g,%g) (%g/%d=%g observed vs %g expected)",
+                  name, x, x + dx, count[i], n, count[i] / n, p[i]);
+    }
+
+  if (status == 0)
+    gsl_test (status, "%s, sampling against pdf over range [%g,%g) ",
+              name, a, b);
+}
+
+/* this function is essentially the same as testPDF, with an extra flag to indicate
+   whether pdf is actually a cdf.
+*/
+void
+testPDF_c (double (*f) (void), double (*pdf) (double), const char *name, const int cdf)
+{
+  double count[BINS], edge[BINS], p[BINS];
+  double a = -5.005, b = +5.0;
+  double dx = (b - a) / BINS;
+  double bin;
+  double total = 0, mean;
+  int i, j, status = 0, status_i = 0, attempts = 0;
+  long int n0 = 0, n = N;
+
+  for (i = 0; i < BINS; i++)
+    {
+      /* Compute the integral of p(x) from x to x+dx by integration or cdf */
+
+      double x = a + i * dx;
+
+      if (fabs (x) < 1e-10)     /* hit the origin exactly */
+        x = 0.0;
+
+      if (cdf)
+        p[i] = pdf(x+dx) - pdf(x); // use cdf if cdf = 1
+      else  // use integration
+        p[i]  = integrate (pdf, x, x+dx);
+    }
+
+  for (i = 0; i < BINS; i++)
+    {
+      count[i] = 0;
+      edge[i] = 0;
+    }
+
+ trial:
+  attempts++;
+
+  for (i = n0; i < n; i++)
+    {
+      double r = f ();
+      total += r;
+
+      if (r < b && r > a)
+        {
+          double u = (r - a) / dx;
+          double f = modf(u, &bin);
+          j = (int)bin;
+
+          if (f == 0)
+            edge[j]++;
+          else
+            count[j]++;
+        }
+    }
+
+  /* Sort out where the hits on the edges should go */
+
+  for (i = 0; i < BINS; i++)
+    {
+      /* If the bin above is empty, its lower edge hits belong in the
+         lower bin */
+
+      if (i + 1 < BINS && count[i+1] == 0) {
+        count[i] += edge[i+1];
+        edge[i+1] = 0;
+      }
+
+      count[i] += edge[i];
+      edge[i] = 0;
+    }
+
+  mean = (total / n);
+
+  status = !gsl_finite(mean);
+  if (status) {
+    gsl_test (status, "%s, finite mean, observed %g", name, mean);
+    return;
+  }
+
+  for (i = 0; i < BINS; i++)
+    {
+      double x = a + i * dx;
+      double d = fabs (count[i] - n * p[i]);
+      if (!gsl_finite(p[i]))
+        {
+          status_i = 1;
+        }
+      else if (p[i] != 0)
+        {
+          double s = d / sqrt (n * p[i]);
+          status_i = (s > 5) && (d > 2);
+        }
+      else
+        {
+          status_i = (count[i] != 0);
+        }
+
+      /* Extend the sample if there is an outlier on the first attempt
+         to avoid spurious failures when running large numbers of tests. */
+      if (status_i && attempts < 50)
+        {
+          n0 = n;
+          n = 2.0*n;
+          goto trial;
+        }
+
+      status |= status_i;
+      if (status_i)
+        gsl_test (status_i, "%s [%g,%g) (%g/%d=%g observed vs %g expected)",
+                  name, x, x + dx, count[i], n, count[i] / n, p[i]);
+    }
+
+  if (status == 0)
+    gsl_test (status, "%s, sampling against pdf over range [%g,%g) ",
+              name, a, b);
+}
+
 
 void
 testPDF (double (*f) (void), double (*pdf) (double), const char *name)
@@ -711,8 +957,6 @@ testDiscretePDF (double (*f) (void), double (*pdf) (unsigned int),
               name, 0, BINS);
 }
 
-
-
 double
 test_beta (void)
 {
@@ -720,9 +964,33 @@ test_beta (void)
 }
 
 double
+test_beta_small (void)
+{
+  return gsl_ran_beta (r_global, 1e-5, 1e-5);
+}
+
+double
 test_beta_pdf (double x)
 {
   return gsl_ran_beta_pdf (x, 2.0, 3.0);
+}
+
+double
+test_beta_small_pdf (double x)
+{
+  return gsl_ran_beta_pdf (x, 1e-5, 1e-5);
+}
+
+double
+test_beta_cdf (double x)
+{
+  return gsl_cdf_beta_P(x, 2.0, 3.0);
+}
+
+double
+test_beta_small_cdf (double x)
+{
+  return gsl_cdf_beta_P(x, 1e-5, 1e-5);
 }
 
 double
