@@ -1,4 +1,5 @@
 *~
+*.diff
 aclocal.m4
 a.out
 autom4te.cache
