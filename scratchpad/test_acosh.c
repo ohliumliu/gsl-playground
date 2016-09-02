@@ -61,11 +61,23 @@ main (void)
                        GSL_IMAG(gsl_complex_arccosh_real (1.0)));
   z_expected = gsl_complex_rect(0, 0);
   gsl_test_rel (GSL_REAL(z), GSL_REAL(z_expected), 1e-15, "gsl_complex_arccosh_real(1)");
+  gsl_test_rel (GSL_IMAG(z), GSL_IMAG(z_expected), 1e-15, "gsl_complex_arccosh_real(1)");
+  
   
   z = gsl_complex_rect(GSL_REAL(gsl_complex_arccosh (gsl_complex_rect(1.0, 0))), 
                        GSL_IMAG(gsl_complex_arccosh (gsl_complex_rect(1.0, 0))));
   z_expected = gsl_complex_rect(0, 0);
   gsl_test_rel (GSL_REAL(z), GSL_REAL(z_expected), 1e-15, "gsl_complex_arccosh(1)");
+  gsl_test_rel (GSL_IMAG(z), GSL_IMAG(z_expected), 1e-15, "gsl_complex_arccosh(1)");
+  
+  printf("gsl_complex_arccosh(1.0+0i)=\n");
+  printf("%4.32f\t+\t%4.32fi\n", GSL_REAL(gsl_complex_arccosh(gsl_complex_rect(1.0, 0))),
+                           GSL_IMAG(gsl_complex_arccosh(gsl_complex_rect(1.0, 0))));
+                           
+  printf("gsl_complex_arccosh_real(1.0)=\n");
+  printf("%4.32f\t+\t%4.32fi\n", GSL_REAL(gsl_complex_arccosh_real(1.0)),
+                           GSL_IMAG(gsl_complex_arccosh_real(1.0)));
+  
 
   exit (gsl_test_summary ());
 }
