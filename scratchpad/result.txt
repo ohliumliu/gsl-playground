@@ -1,0 +1,13 @@
+attempts = 1
+bin: [-0.05, 0.05], count = 49871.00, expected = 49998.54
+ bin: [0.05, 0.15], count = 0.00, expected = 0.60
+ bin: [0.15, 0.25], count = 1.00, expected = 0.32
+ bin: [0.25, 0.35], count = 0.00, expected = 0.24
+ bin: [0.35, 0.46], count = 0.00, expected = 0.21
+ bin: [0.46, 0.56], count = 0.00, expected = 0.20
+ bin: [0.56, 0.66], count = 0.00, expected = 0.21
+ bin: [0.66, 0.76], count = 0.00, expected = 0.25
+ bin: [0.76, 0.86], count = 0.00, expected = 0.33
+ bin: [0.86, 0.96], count = 1.00, expected = 0.69
+ bin: [0.96, 1.06], count = 50127.00, expected = 49998.41
+ Completed [1/1]

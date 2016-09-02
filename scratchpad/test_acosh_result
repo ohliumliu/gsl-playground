@@ -1,0 +1,38 @@
+1. issues of concern.
+gsl_complex_arccosh(1.0+0i) returns -0. It still passes gsl_test.
+PASS: real part: gsl_complex_arccosh(1) (-0 observed vs 0 expected)
+PASS: imaginary part: gsl_complex_arccosh(1) (0 observed vs 0 expected)
+
+gsl_complex_arccosh_real(1.0) returns +0. It passes gsl_test.
+PASS: real part: gsl_complex_arccosh_real(1) (0 observed vs 0 expected)
+PASS: imaginary part: gsl_complex_arccosh_real(1) (0 observed vs 0 expected)
+============================================
+2. The real part of gsl_complex_arccosh(1.0+0.0i) is zero, and its gsl_sign is 1, as expected by the definition of gsl_sign.
+gsl_sign(0) = 1 irrespective of IEEE sign bit.
+gsl_complex_arccosh(1.0+0.0i)=
+-0.00000000000000000000000000000000	+	0.00000000000000000000000000000000i
+sign of real part: 1
+In contrast, gsl_complex_arccosh_real(1.0) has +0.0 as its real part.
+gsl_complex_arccosh_real(1.0)=
+0.00000000000000000000000000000000	+	0.00000000000000000000000000000000i
+============================================
+3. gsl_complex_arccosh(x) calls gsl_complex_arccos(x), which calls gsl_complex_arccos_real if the input is real.
+In gsl_complex_arccosh_1, it calls gsl_complex_arccos_1, which doesn't call gsl_complex_arccos_real even for real input.
+The result's real part is +0, as desired. However, I have no idea if this breaks other tests.
+gsl_complex_arccosh_1(1.0+0i)=
+0.00000000000000000000000000000000	+	0.00000000000000000000000000000000i
+
+The difference lies in the difference between gsl_complex_arccos and gsl_complex_arccos_1.
+Although using gsl_complex_arccos_1 seems to solve the consistency issue for gsl_complex_arccosh,
+gsl_complex_arccos_1 itself is inconsistent with gsl_complex_arccos_real when the input is real.
+gsl_complex_arccos(1.0+0i)=
+0.00000000000000000000000000000000	+	0.00000000000000000000000000000000i
+gsl_complex_arccos_1(1.0+0i)=
+0.00000000000000000000000000000000	+	-0.00000000000000000000000000000000i
+gsl_complex_arccos_real(1.0)=
+0.00000000000000000000000000000000	+	0.00000000000000000000000000000000i
+============================================
+3. A naive band-aid. Since gsl_complex_arccos can have a special brach calling gsl_complex_arccos_real,
+maybe we can do the same for gsl_complex_arccosh. This idea is implemented in gsl_complex_arccosh_2.
+gsl_complex_arccosh_2(1.0+0i)=
+0.00000000000000000000000000000000	+	0.00000000000000000000000000000000i
