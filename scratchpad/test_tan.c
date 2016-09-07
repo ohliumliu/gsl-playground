@@ -28,6 +28,63 @@
 #include <gsl/gsl_ieee_utils.h>
 
 gsl_complex gsl_complex_tanh_smallR (gsl_complex a);
+gsl_complex gsl_complex_tan_smallR (gsl_complex a);
+gsl_complex gsl_complex_tan_2 (gsl_complex a);
+
+gsl_complex
+gsl_complex_tan_smallR (gsl_complex a)
+{                               /* z = tan(a) */
+  double R = GSL_REAL (a), I = GSL_IMAG (a);
+
+  gsl_complex z;
+
+  if (2 > 1)
+    {
+      double D = pow (cos (R), 2.0) + pow (sinh (I), 2.0);
+
+      GSL_SET_COMPLEX (&z, 0.5 * sin (2 * R) / D, 0.5 * sinh (2 * I) / D);
+    }
+  else
+    {
+      double u = exp (-I);
+      double C = 2 * u / (1 - pow (u, 2.0));
+      double D = 1 + pow (cos (R), 2.0) * pow (C, 2.0);
+
+      double S = pow (C, 2.0);
+      double T = 1.0 / tanh (I);
+
+      GSL_SET_COMPLEX (&z, 0.5 * sin (2 * R) * S / D, T / D);
+    }
+
+  return z;
+}
+
+
+gsl_complex
+gsl_complex_tan_2 (gsl_complex a)
+{                               /* z = tan(a) */
+  double R = GSL_REAL (a), I = GSL_IMAG (a);
+
+  gsl_complex z;
+
+  
+  if (fabs (I) < 1)
+    {
+
+      double D = pow (cos (R), 2.0) + pow (sinh (I), 2.0);
+      GSL_SET_COMPLEX (&z, 0.5 * sin (2 * R) / D, 0.5 * sinh (2 * I) / D);
+    }
+  else
+    {
+
+      double D = pow (cos (R), 2.0) + pow (sinh (I), 2.0);
+      double F = 1 + pow(cos (R)/sinh (I), 2.0);
+
+      GSL_SET_COMPLEX (&z, 0.5 * sin (2 * R) / D, 1 / (tanh (I) * F));
+    }
+
+  return z;
+}
 
 gsl_complex
 gsl_complex_tanh_smallR (gsl_complex a)
@@ -36,7 +93,7 @@ gsl_complex_tanh_smallR (gsl_complex a)
 
   gsl_complex z;
 
-  if (2.0 < 1.0) // this branch is always used 
+  if (2.0 > 1.0) // this branch is always used 
     {
       double D = pow (cos (I), 2.0) + pow (sinh (R), 2.0);
       
@@ -62,13 +119,13 @@ main (void)
 
   gsl_ieee_env_setup ();
   
-  x_complex = gsl_complex_rect(0, -1000);
+  x_complex = gsl_complex_rect(0, 1000);
   z = gsl_complex_tan(x_complex);
   printf("gsl_complex_tan(%4.2f + %4.2fi) = \n", GSL_REAL(x_complex), GSL_IMAG(x_complex));
   printf("%4.32f + %4.32fi\n", GSL_REAL(z), GSL_IMAG(z));
 
  
-  x_complex = gsl_complex_rect(0, 1000);
+  x_complex = gsl_complex_rect(0, -1000);
   z = gsl_complex_tan(x_complex);
   printf("gsl_complex_tan(%4.2f + %4.2fi) = \n", GSL_REAL(x_complex), GSL_IMAG(x_complex));
   printf("%4.32f + %4.32fi\n", GSL_REAL(z), GSL_IMAG(z));
@@ -95,8 +152,31 @@ main (void)
   printf("gsl_complex_tanh_smallR(%4.2f + %4.2fi) = \n", GSL_REAL(x_complex), GSL_IMAG(x_complex));
   printf("%4.32f + %4.32fi\n", GSL_REAL(z), GSL_IMAG(z));
   
-  printf("sinh(1000)=%4.32f\tsinh(-1000)=%4.32f\n", sinh(1000), sinh(-1000));
+  printf("Use gsl_complex_tan_smallR:\n");
+  x_complex = gsl_complex_rect(0, 1000);
+  z = gsl_complex_tan_smallR(x_complex);
+  printf("gsl_complex_tan_smallR(%4.2f + %4.2fi) = \n", GSL_REAL(x_complex), GSL_IMAG(x_complex));
+  printf("%4.32f + %4.32fi\n", GSL_REAL(z), GSL_IMAG(z));
   
+  x_complex = gsl_complex_rect(0, -1000);
+  z = gsl_complex_tan_smallR(x_complex);
+  printf("gsl_complex_tan_smallR(%4.2f + %4.2fi) = \n", GSL_REAL(x_complex), GSL_IMAG(x_complex));
+  printf("%4.32f + %4.32fi\n", GSL_REAL(z), GSL_IMAG(z));
+  
+  printf("Use gsl_complex_tan_2:\n");
+  x_complex = gsl_complex_rect(0, 1000);
+  z = gsl_complex_tan_2(x_complex);
+  printf("gsl_complex_tan_2(%4.2f + %4.2fi) = \n", GSL_REAL(x_complex), GSL_IMAG(x_complex));
+  printf("%4.32f + %4.32fi\n", GSL_REAL(z), GSL_IMAG(z));
+  
+  x_complex = gsl_complex_rect(0, -1000);
+  z = gsl_complex_tan_2(x_complex);
+  printf("gsl_complex_tan_2(%4.2f + %4.2fi) = \n", GSL_REAL(x_complex), GSL_IMAG(x_complex));
+  printf("%4.32f + %4.32fi\n", GSL_REAL(z), GSL_IMAG(z));
+  
+  
+  printf("GSL can probably handle inf, but with its limitation.\n");
+  printf("sinh(1000)=%4.32f\tcosh(1000)=%4.32f\ttanh(1000)=%4.32f\n", sinh(1000), cosh(1000), tanh(1000));
   double u = exp (1000);
   double C = 2 * u / (1 - pow (u, 2.0));
   double D = pow (sinh (1000), 2.0);
