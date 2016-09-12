@@ -119,28 +119,32 @@ main (void)
 
   gsl_ieee_env_setup ();
   
+  printf("1. Reproduce the issue. When IMAG(x) << -1, gsl_complex_tan blows up.\n");
   x_complex = gsl_complex_rect(0, 1000);
   z = gsl_complex_tan(x_complex);
   printf("gsl_complex_tan(%4.2f + %4.2fi) = \n", GSL_REAL(x_complex), GSL_IMAG(x_complex));
-  printf("%4.32f + %4.32fi\n", GSL_REAL(z), GSL_IMAG(z));
+  printf("%4.2f + %4.2fi\n", GSL_REAL(z), GSL_IMAG(z));
 
  
   x_complex = gsl_complex_rect(0, -1000);
   z = gsl_complex_tan(x_complex);
   printf("gsl_complex_tan(%4.2f + %4.2fi) = \n", GSL_REAL(x_complex), GSL_IMAG(x_complex));
-  printf("%4.32f + %4.32fi\n", GSL_REAL(z), GSL_IMAG(z));
+  printf("%4.2f + %4.2fi\n", GSL_REAL(z), GSL_IMAG(z));
   
-  printf("Use gsl_complex_tanh:\n");
+  printf("2. Use gsl_complex_tanh. It doesn't suffer from the same issue.\n");
   x_complex = gsl_complex_rect(1000, 0);
   z = gsl_complex_tanh(x_complex);
   printf("gsl_complex_tanh(%4.2f + %4.2fi) = \n", GSL_REAL(x_complex), GSL_IMAG(x_complex));
-  printf("%4.32f + %4.32fi\n", GSL_REAL(z), GSL_IMAG(z));
+  printf("%4.2f + %4.2fi\n", GSL_REAL(z), GSL_IMAG(z));
                           
   x_complex = gsl_complex_rect(-1000, 0);
   z = gsl_complex_tanh(x_complex);
   printf("gsl_complex_tanh(%4.2f + %4.2fi) = \n", GSL_REAL(x_complex), GSL_IMAG(x_complex));
-  printf("%4.32f + %4.32fi\n", GSL_REAL(z), GSL_IMAG(z));
+  printf("%4.2f + %4.2fi\n", GSL_REAL(z), GSL_IMAG(z));
   
+  /*
+  printf("In current implementation of gsl_complex_tan and gsl_complex_tanh, the branch for small\
+  imaginary part or real part of the input doesn't work for large input as expected.\n")
   printf("Use gsl_complex_tanh_smallR:\n");
   x_complex = gsl_complex_rect(1000, 0);
   z = gsl_complex_tanh_smallR(x_complex);
@@ -162,25 +166,31 @@ main (void)
   z = gsl_complex_tan_smallR(x_complex);
   printf("gsl_complex_tan_smallR(%4.2f + %4.2fi) = \n", GSL_REAL(x_complex), GSL_IMAG(x_complex));
   printf("%4.32f + %4.32fi\n", GSL_REAL(z), GSL_IMAG(z));
+  */
   
-  printf("Use gsl_complex_tan_2:\n");
+  printf("3. Use gsl_complex_tan_2. This function follows the same idea in gsl_complex_tanh. Note that\
+  in 7141c7a, gsl_complex_tanh was updated to solve a similar issue.\n");
   x_complex = gsl_complex_rect(0, 1000);
   z = gsl_complex_tan_2(x_complex);
   printf("gsl_complex_tan_2(%4.2f + %4.2fi) = \n", GSL_REAL(x_complex), GSL_IMAG(x_complex));
-  printf("%4.32f + %4.32fi\n", GSL_REAL(z), GSL_IMAG(z));
+  printf("%4.2f + %4.2fi\n", GSL_REAL(z), GSL_IMAG(z));
   
   x_complex = gsl_complex_rect(0, -1000);
   z = gsl_complex_tan_2(x_complex);
   printf("gsl_complex_tan_2(%4.2f + %4.2fi) = \n", GSL_REAL(x_complex), GSL_IMAG(x_complex));
-  printf("%4.32f + %4.32fi\n", GSL_REAL(z), GSL_IMAG(z));
+  printf("%4.2f + %4.2fi\n", GSL_REAL(z), GSL_IMAG(z));
   
   
-  printf("GSL can probably handle inf, but with its limitation.\n");
+  printf("4. Some discussion. It seems that GSL can probably handle inf, but with its limitation. Simply put,\
+  it cannot determine inf/inf, but gives correct answer for 1/inf. gsl_complex_tan_2 basically rearranges\
+  the terms to avoid inf/inf. glibc/s_ctan.c uses a different, and probably more robust approach.\n");
+  /*
   printf("sinh(1000)=%4.32f\tcosh(1000)=%4.32f\ttanh(1000)=%4.32f\n", sinh(1000), cosh(1000), tanh(1000));
   double u = exp (1000);
   double C = 2 * u / (1 - pow (u, 2.0));
   double D = pow (sinh (1000), 2.0);
   printf("u = exp (1000) = %4.32f\tC = 2 * u/ (1- pow (u, 2.0)) =  %4.32f\nD = pow (sinh(1000), 2.0) = %4.32f\n", u, C, D);
+  */
   
   exit (gsl_test_summary ());
 }
