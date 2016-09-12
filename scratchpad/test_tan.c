@@ -45,7 +45,7 @@ gsl_complex_tan_smallR (gsl_complex a)
       GSL_SET_COMPLEX (&z, 0.5 * sin (2 * R) / D, 0.5 * sinh (2 * I) / D);
     }
   else
-    {
+    { // this branch is not used in this function
       double u = exp (-I);
       double C = 2 * u / (1 - pow (u, 2.0));
       double D = 1 + pow (cos (R), 2.0) * pow (C, 2.0);
@@ -180,7 +180,7 @@ main (void)
   double u = exp (1000);
   double C = 2 * u / (1 - pow (u, 2.0));
   double D = pow (sinh (1000), 2.0);
-  printf("u = %4.32f\tC = %4.32f\nD = %4.32f\n", u, C, D);
+  printf("u = exp (1000) = %4.32f\tC = 2 * u/ (1- pow (u, 2.0)) =  %4.32f\nD = pow (sinh(1000), 2.0) = %4.32f\n", u, C, D);
   
   exit (gsl_test_summary ());
 }
