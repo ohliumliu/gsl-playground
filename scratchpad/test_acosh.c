@@ -189,6 +189,7 @@ main (void)
   
   printf("3. A naive band-aid. Since gsl_complex_arccos can have a special brach calling gsl_complex_arccos_real,\n");
   printf("maybe we can do the same for gsl_complex_arccosh. This idea is implemented in gsl_complex_arccosh_2.\n");
+  printf("In fact, this is the approach adopted in a8bd509b3f109dd168587d390bf02673bfd543c3 for gsl_complex_cos.")
   printf("gsl_complex_arccosh_2(1.0+0i)=\n");
   printf("%4.32f\t+\t%4.32fi\n", GSL_REAL(gsl_complex_arccosh_2(x_complex)),
                            GSL_IMAG(gsl_complex_arccosh_2(x_complex)));
