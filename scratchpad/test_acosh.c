@@ -148,18 +148,18 @@ main (void)
   z_expected = gsl_complex_rect(0.0, 0.0);
   gsl_test_abs (GSL_REAL(z), GSL_REAL(z_expected), 0.0, "real part: gsl_complex_arccosh_real(1)");
   gsl_test_abs (GSL_IMAG(z), GSL_IMAG(z_expected), 0.0, "imaginary part: gsl_complex_arccosh_real(1)");
-  printf("============================================\n");
+  printf("===========================================\n");
   
   printf("2. The real part of gsl_complex_arccosh(1.0+0.0i) is zero, and its gsl_sign is 1, as expected by the definition of gsl_sign.\n"); 
   printf("gsl_sign(0) = 1 irrespective of IEEE sign bit.\n");
   printf("gsl_complex_arccosh(1.0+0.0i)=\n");
-  printf("%4.32f\t+\t%4.32fi\n", GSL_REAL(gsl_complex_arccosh(x_complex)),
+  printf("%4.2f\t+\t%4.2f\n", GSL_REAL(gsl_complex_arccosh(x_complex)),
                            GSL_IMAG(gsl_complex_arccosh(x_complex)));
   printf("sign of real part: %d\n", GSL_SIGN(GSL_REAL(gsl_complex_arccosh(x_complex))));
                            
   printf("In contrast, gsl_complex_arccosh_real(1.0) has +0.0 as its real part.\n");
   printf("gsl_complex_arccosh_real(1.0)=\n");
-  printf("%4.32f\t+\t%4.32fi\n", GSL_REAL(gsl_complex_arccosh_real(x)),
+  printf("%4.2f\t+\t%4.2fi\n", GSL_REAL(gsl_complex_arccosh_real(x)),
                            GSL_IMAG(gsl_complex_arccosh_real(x)));
   printf("============================================\n");
   
@@ -167,7 +167,7 @@ main (void)
   printf("In gsl_complex_arccosh_1, it calls gsl_complex_arccos_1, which doesn't call gsl_complex_arccos_real even for real input.\n");
   printf("The result's real part is +0, as desired. However, I have no idea if this breaks other tests.\n");
   printf("gsl_complex_arccosh_1(1.0+0i)=\n");
-  printf("%4.32f\t+\t%4.32fi\n", GSL_REAL(gsl_complex_arccosh_1(x_complex)),
+  printf("%4.2f\t+\t%4.2fi\n", GSL_REAL(gsl_complex_arccosh_1(x_complex)),
                            GSL_IMAG(gsl_complex_arccosh_1(x_complex)));
   printf("\n");
   
@@ -175,23 +175,23 @@ main (void)
   printf("Although using gsl_complex_arccos_1 seems to solve the consistency issue for gsl_complex_arccosh,\n");
   printf("gsl_complex_arccos_1 itself is inconsistent with gsl_complex_arccos_real when the input is real.\n");
   printf("gsl_complex_arccos(1.0+0i)=\n");
-  printf("%4.32f\t+\t%4.32fi\n", GSL_REAL(gsl_complex_arccos(x_complex)),
+  printf("%4.2f\t+\t%4.2fi\n", GSL_REAL(gsl_complex_arccos(x_complex)),
                            GSL_IMAG(gsl_complex_arccos(x_complex)));
   
   printf("gsl_complex_arccos_1(1.0+0i)=\n");
-  printf("%4.32f\t+\t%4.32fi\n", GSL_REAL(gsl_complex_arccos_1(x_complex)),
+  printf("%4.2f\t+\t%4.2fi\n", GSL_REAL(gsl_complex_arccos_1(x_complex)),
                            GSL_IMAG(gsl_complex_arccos_1(x_complex)));
                            
   printf("gsl_complex_arccos_real(1.0)=\n");
-  printf("%4.32f\t+\t%4.32fi\n", GSL_REAL(gsl_complex_arccos_real(x)),
+  printf("%4.2f\t+\t%4.2fi\n", GSL_REAL(gsl_complex_arccos_real(x)),
                            GSL_IMAG(gsl_complex_arccos_real(x)));
   printf("============================================\n");
   
   printf("3. A naive band-aid. Since gsl_complex_arccos can have a special brach calling gsl_complex_arccos_real,\n");
   printf("maybe we can do the same for gsl_complex_arccosh. This idea is implemented in gsl_complex_arccosh_2.\n");
-  printf("In fact, this is the approach adopted in a8bd509b3f109dd168587d390bf02673bfd543c3 for gsl_complex_cos.")
+  printf("In fact, this is the approach adopted in a8bd509b3f109dd168587d390bf02673bfd543c3 for gsl_complex_cos.");
   printf("gsl_complex_arccosh_2(1.0+0i)=\n");
-  printf("%4.32f\t+\t%4.32fi\n", GSL_REAL(gsl_complex_arccosh_2(x_complex)),
+  printf("%4.2f\t+\t%4.2fi\n", GSL_REAL(gsl_complex_arccosh_2(x_complex)),
                            GSL_IMAG(gsl_complex_arccosh_2(x_complex)));
                            
   exit (gsl_test_summary ());

@@ -1,0 +1,42 @@
+diff --git a/complex/math.c b/complex/math.c
+index 47b9256..8055076 100644
+--- a/complex/math.c
++++ b/complex/math.c
+@@ -1,6 +1,6 @@
+ /* complex/math.c
+  * 
+- * Copyright (C) 1996, 1997, 1998, 1999, 2000, 2007 Jorma Olavi Tähtinen, Brian Gough
++ * Copyright (C) 1996, 1997, 1998, 1999, 2000, 2007 Jorma Olavi Tï¿½htinen, Brian Gough
+  * 
+  * This program is free software; you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License as published by
+@@ -19,7 +19,7 @@
+ 
+ /* Basic complex arithmetic functions
+ 
+- * Original version by Jorma Olavi Tähtinen <jotahtin@cc.hut.fi>
++ * Original version by Jorma Olavi Tï¿½htinen <jotahtin@cc.hut.fi>
+  *
+  * Modified for GSL by Brian Gough, 3/2000
+  */
+@@ -935,8 +935,18 @@ gsl_complex_arcsinh (gsl_complex a)
+ gsl_complex
+ gsl_complex_arccosh (gsl_complex a)
+ {                               /* z = arccosh(a) */
+-  gsl_complex z = gsl_complex_arccos (a);
+-  z = gsl_complex_mul_imag (z, GSL_IMAG(z) > 0 ? -1.0 : 1.0);
++  double R = GSL_REAL (a), I = GSL_IMAG (a);
++  gsl_complex z;
++
++  if (I == 0)
++    {
++      z = gsl_complex_arccosh_real (R);
++    }
++  else
++    {
++    z = gsl_complex_arccos (a);
++    z = gsl_complex_mul_imag (z, GSL_IMAG(z) > 0 ? -1.0 : 1.0);
++    }
+   return z;
+ }
+ 
